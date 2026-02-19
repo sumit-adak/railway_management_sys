@@ -1,0 +1,3 @@
+sumit,adak,admin
+sumit,123,ADMIN
+sujit,1234,PASSENGER
