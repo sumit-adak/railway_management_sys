@@ -1,3 +1,3 @@
 sumit,adak,admin
-sumit,123,ADMIN
-sujit,1234,PASSENGER
+sumit adak,1234,admin
+sujit adak,12345,passenger

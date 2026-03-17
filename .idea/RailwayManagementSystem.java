@@ -1,19 +1,12 @@
-// Railway Management System (Console Based)
-// Final Year Java Project
-// Uses: OOP + File Handling + ArrayList
-
-
 import java.io.*;
 import java.util.*;
 
-// ======================= MODELS =======================
+// ================= MODELS =================
 
 class User {
-    String username;
-    String password;
-    String role; // ADMIN / PASSENGER
+    String username, password, role;
 
-    public User(String u, String p, String r) {
+    User(String u, String p, String r) {
         username = u;
         password = p;
         role = r;
@@ -21,14 +14,11 @@ class User {
 }
 
 class Train {
-    int trainNo;
-    String name;
-    String source;
-    String destination;
-    int totalSeats;
+    int trainNo, totalSeats;
+    String name, source, destination;
     double farePerKm;
 
-    public Train(int no, String n, String s, String d, int seats, double fare) {
+    Train(int no, String n, String s, String d, int seats, double fare) {
         trainNo = no;
         name = n;
         source = s;
@@ -38,37 +28,14 @@ class Train {
     }
 }
 
-class Ticket {
-    String pnr;
-    String passengerName;
-    int age;
-    int trainNo;
-    int seatNo;
-    String status; // CONFIRMED / WAITING / CANCELLED
-    double fare;
-
-    public Ticket(String pnr, String name, int age, int trainNo,
-                  int seatNo, String status, double fare) {
-        this.pnr = pnr;
-        this.passengerName = name;
-        this.age = age;
-        this.trainNo = trainNo;
-        this.seatNo = seatNo;
-        this.status = status;
-        this.fare = fare;
-    }
-}
-
-// ======================= UTILS =======================
+// ================= UTIL =================
 
 class FileUtil {
 
     public static void writeLine(String file, String data) {
         try (FileWriter fw = new FileWriter(file, true)) {
             fw.write(data + "\n");
-        } catch (IOException e) {
-            System.out.println("File Write Error");
-        }
+        } catch (Exception e) {}
     }
 
     public static List<String> readAll(String file) {
@@ -77,48 +44,43 @@ class FileUtil {
             String line;
             while ((line = br.readLine()) != null)
                 list.add(line);
-        } catch (IOException e) {
-        }
+        } catch (Exception e) {}
         return list;
     }
 
     public static void overwrite(String file, List<String> data) {
         try (FileWriter fw = new FileWriter(file)) {
-            for (String s : data)
-                fw.write(s + "\n");
-        } catch (IOException e) {
-        }
+            for (String s : data) fw.write(s + "\n");
+        } catch (Exception e) {}
     }
 }
 
 class PNRGenerator {
     public static String generatePNR() {
-        return "PNR" + System.currentTimeMillis() % 1000000;
+        return "PNR" + (int)(Math.random() * 100000);
     }
 }
 
-// ======================= SERVICES =======================
+// ================= SERVICES =================
 
 class AuthService {
-
     static final String FILE = "users.txt";
 
     public static User login(String u, String p) {
         for (String line : FileUtil.readAll(FILE)) {
-            String[] data = line.split(",");
-            if (data[0].equals(u) && data[1].equals(p))
-                return new User(data[0], data[1], data[2]);
+            String[] d = line.split(",");
+            if (d[0].equals(u) && d[1].equals(p))
+                return new User(d[0], d[1], d[2]);
         }
         return null;
     }
 
-    public static void register(String u, String p, String role) {
-        FileUtil.writeLine(FILE, u + "," + p + "," + role);
+    public static void register(String u, String p, String r) {
+        FileUtil.writeLine(FILE, u + "," + p + "," + r);
     }
 }
 
 class TrainService {
-
     static final String FILE = "trains.txt";
 
     public static void addTrain(Train t) {
@@ -139,12 +101,6 @@ class TrainService {
         return list;
     }
 
-    public static void deleteTrain(int trainNo) {
-        List<String> data = FileUtil.readAll(FILE);
-        data.removeIf(line -> line.startsWith(trainNo + ","));
-        FileUtil.overwrite(FILE, data);
-    }
-
     public static Train findTrain(int trainNo) {
         for (Train t : getAllTrains())
             if (t.trainNo == trainNo)
@@ -155,10 +111,21 @@ class TrainService {
     public static void search(String src, String dest) {
         for (Train t : getAllTrains()) {
             if (t.source.equalsIgnoreCase(src) &&
-                    t.destination.equalsIgnoreCase(dest)) {
-                System.out.println(t.trainNo + " " + t.name);
+                t.destination.equalsIgnoreCase(dest)) {
+
+                double price = t.farePerKm * 100;
+
+                System.out.println("Train No: " + t.trainNo +
+                        " | Name: " + t.name +
+                        " | Price: " + price);
             }
         }
+    }
+
+    public static void deleteTrain(int no) {
+        List<String> data = FileUtil.readAll(FILE);
+        data.removeIf(line -> line.startsWith(no + ","));
+        FileUtil.overwrite(FILE, data);
     }
 }
 
@@ -170,33 +137,29 @@ class TicketService {
         int count = 0;
         for (String line : FileUtil.readAll(FILE)) {
             String[] d = line.split(",");
-            if (Integer.parseInt(d[3]) == trainNo &&
-                    d[5].equals("CONFIRMED"))
+            if (Integer.parseInt(d[3]) == trainNo && d[5].equals("CONFIRMED"))
                 count++;
         }
         return count;
     }
 
-    public static void bookTicket(String name, int age,
-                                  int trainNo, boolean tatkal) {
+    public static void bookTicket(String name, int age, int trainNo, boolean tatkal) {
 
         Train t = TrainService.findTrain(trainNo);
         if (t == null) {
-            System.out.println("Train not found");
+            System.out.println("Train not found ❌");
             return;
         }
 
         int booked = getBookedSeats(trainNo);
         int seatNo = booked + 1;
 
-        String status;
-        if (booked < t.totalSeats)
-            status = "CONFIRMED";
-        else
-            status = "WAITING";
+        String status = (booked < t.totalSeats) ? "CONFIRMED" : "WAITING";
 
-        double fare = t.farePerKm * 100; // base distance
+        double fare = t.farePerKm * 100;
         if (tatkal) fare *= 1.5;
+
+        System.out.println("Ticket Price: " + fare);
 
         String pnr = PNRGenerator.generatePNR();
 
@@ -224,6 +187,33 @@ class TicketService {
         FileUtil.overwrite(FILE, newData);
     }
 
+    public static void viewMyTickets(String username) {
+
+        boolean found = false;
+
+        for (String line : FileUtil.readAll(FILE)) {
+            String[] d = line.split(",");
+
+            if (d[1].equalsIgnoreCase(username)) {
+
+                Train t = TrainService.findTrain(Integer.parseInt(d[3]));
+
+                System.out.println("\nPNR: " + d[0]);
+                System.out.println("Name: " + d[1]);
+                System.out.println("Train: " + (t != null ? t.name : d[3]));
+                System.out.println("Route: " + (t != null ? t.source + " -> " + t.destination : ""));
+                System.out.println("Seat No: " + d[4]);
+                System.out.println("Status: " + d[5]);
+                System.out.println("Fare: " + d[6]);
+                System.out.println("----------------------");
+
+                found = true;
+            }
+        }
+
+        if (!found) System.out.println("No Tickets Found ❌");
+    }
+
     public static void revenueReport() {
         double total = 0;
         for (String line : FileUtil.readAll(FILE)) {
@@ -235,7 +225,7 @@ class TicketService {
     }
 }
 
-// ======================= MAIN UI =======================
+// ================= MAIN =================
 
 public class RailwayManagementSystem {
 
@@ -244,7 +234,7 @@ public class RailwayManagementSystem {
     public static void main(String[] args) {
 
         while (true) {
-            System.out.println("\n1. Login  2. Register  3. Exit");
+            System.out.println("\n1.Login 2.Register 3.Exit");
             int ch = sc.nextInt();
 
             if (ch == 1) login();
@@ -252,41 +242,48 @@ public class RailwayManagementSystem {
             else break;
         }
     }
+static void login() {
 
-    static void login() {
-        System.out.print("Username: ");
-        String u = sc.next();
-        System.out.print("Password: ");
-        String p = sc.next();
+    sc.nextLine(); // ✅ buffer clear
 
-        User user = AuthService.login(u, p);
+    System.out.print("Username: ");
+    String u = sc.nextLine();
 
-        if (user == null) {
-            System.out.println("Invalid Login");
-            return;
-        }
+    System.out.print("Password: ");
+    String p = sc.nextLine();
 
-        if (user.role.equals("ADMIN")) adminMenu();
-        else passengerMenu();
+    User user = AuthService.login(u, p);
+
+    if (user == null) {
+        System.out.println("Invalid Login ❌");
+        return;
     }
 
-    static void register() {
-        System.out.print("Username: ");
-        String u = sc.next();
-        System.out.print("Password: ");
-        String p = sc.next();
-        System.out.print("Role (ADMIN/PASSENGER): ");
-        String r = sc.next();
+    if (user.role.equalsIgnoreCase("ADMIN")) adminMenu();
+    else passengerMenu(user.username);
+}
 
-        AuthService.register(u, p, r);
-    }
+   static void register() {
 
-    // ================= ADMIN =================
+    sc.nextLine(); // ✅ buffer clear
+
+    System.out.print("Username: ");
+    String u = sc.nextLine();
+
+    System.out.print("Password: ");
+    String p = sc.nextLine();
+
+    System.out.print("Role (ADMIN/PASSENGER): ");
+    String r = sc.nextLine();
+
+    AuthService.register(u, p, r);
+}
+
+    // ADMIN
 
     static void adminMenu() {
         while (true) {
-            System.out.println(
-                    "\n1.Add Train 2.View Trains 3.Delete Train 4.Revenue 5.Logout");
+            System.out.println("\n1.Add Train 2.View Trains 3.Delete Train 4.Revenue 5.Logout");
             int ch = sc.nextInt();
 
             switch (ch) {
@@ -294,27 +291,34 @@ public class RailwayManagementSystem {
                 case 2 -> viewTrains();
                 case 3 -> deleteTrain();
                 case 4 -> TicketService.revenueReport();
-                default -> {return;}
+                default -> { return; }
             }
         }
     }
 
     static void addTrain() {
+        sc.nextLine(); // FIX BUFFER
+
         System.out.print("No: ");
         int no = sc.nextInt();
+        sc.nextLine();
+
         System.out.print("Name: ");
-        String name = sc.next();
+        String name = sc.nextLine();
+
         System.out.print("Source: ");
-        String src = sc.next();
+        String src = sc.nextLine();
+
         System.out.print("Destination: ");
-        String dest = sc.next();
+        String dest = sc.nextLine();
+
         System.out.print("Seats: ");
         int seats = sc.nextInt();
+
         System.out.print("Fare/Km: ");
         double fare = sc.nextDouble();
 
-        TrainService.addTrain(
-                new Train(no, name, src, dest, seats, fare));
+        TrainService.addTrain(new Train(no, name, src, dest, seats, fare));
     }
 
     static void viewTrains() {
@@ -330,19 +334,19 @@ public class RailwayManagementSystem {
         TrainService.deleteTrain(no);
     }
 
-    // ================= PASSENGER =================
+    // PASSENGER
 
-    static void passengerMenu() {
+    static void passengerMenu(String user) {
         while (true) {
-            System.out.println(
-                    "\n1.Search Train 2.Book Ticket 3.Cancel Ticket 4.Logout");
+            System.out.println("\n1.Search 2.Book 3.Cancel 4.My Tickets 5.Logout");
             int ch = sc.nextInt();
 
             switch (ch) {
                 case 1 -> searchTrain();
                 case 2 -> bookTicket();
                 case 3 -> cancelTicket();
-                default -> {return;}
+                case 4 -> TicketService.viewMyTickets(user);
+                default -> { return; }
             }
         }
     }
@@ -356,13 +360,18 @@ public class RailwayManagementSystem {
     }
 
     static void bookTicket() {
+        sc.nextLine(); // FIX
+
         System.out.print("Name: ");
-        String name = sc.next();
+        String name = sc.nextLine();
+
         System.out.print("Age: ");
         int age = sc.nextInt();
+
         System.out.print("Train No: ");
         int no = sc.nextInt();
-        System.out.print("Tatkal? (true/false): ");
+
+        System.out.print("Tatkal (true/false): ");
         boolean tatkal = sc.nextBoolean();
 
         TicketService.bookTicket(name, age, no, tatkal);

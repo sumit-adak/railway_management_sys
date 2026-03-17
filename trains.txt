@@ -1,1 +1,1 @@
-101,Express,kolkata,delhi,2,5.0
+101,rajdhani,kolkata,delhi,2000,100.0
